@@ -43,6 +43,7 @@ class AudioRecorderController: UIViewController {
         
         loadAudio()
         updateViews()
+        try? prepareAudioSession() // TODO: handle case where on phone and it fails
     }
     
     deinit {
@@ -119,13 +120,11 @@ class AudioRecorderController: UIViewController {
         audioPlayer = try? AVAudioPlayer(contentsOf: songURL)
     }
     
-    /*
     func prepareAudioSession() throws {
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.playAndRecord, options: [.defaultToSpeaker])
         try session.setActive(true, options: []) // can fail if on a phone call, for instance
     }
-    */
     
     func play() {
         audioPlayer?.play()
@@ -160,7 +159,6 @@ class AudioRecorderController: UIViewController {
         return file
     }
     
-    /*
     func requestPermissionOrStartRecording() {
         switch AVAudioSession.sharedInstance().recordPermission {
         case .undetermined:
@@ -191,7 +189,6 @@ class AudioRecorderController: UIViewController {
             break
         }
     }
-    */
     
     func startRecording() {
         let recordingURL = createNewRecordingURL()
@@ -233,7 +230,7 @@ class AudioRecorderController: UIViewController {
         if isRecording {
             stopRecording()
         } else {
-            startRecording()
+            requestPermissionOrStartRecording()
         }
     }
 }
