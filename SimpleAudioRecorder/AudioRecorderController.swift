@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import AVFoundation
 
 class AudioRecorderController: UIViewController {
     
@@ -41,12 +42,27 @@ class AudioRecorderController: UIViewController {
                                                                    weight: .regular)
         
         loadAudio()
+        updateViews()
     }
     
+    private func updateViews() {
+        playButton.isSelected = isPlaying
+        
+        let currentTime = audioPlayer?.currentTime ?? 0.0
+        let duration = audioPlayer?.duration ?? 0.0
+        let timeRemaining = round(duration) - currentTime
+        timeElapsedLabel.text = timeIntervalFormatter.string(from: currentTime) ?? "00:00"
+        timeRemainingLabel.text = "-" + (timeIntervalFormatter.string(from: timeRemaining) ?? "00:00")
+        
+        timeSlider.minimumValue = 0
+        timeSlider.maximumValue = Float(duration)
+        timeSlider.value = Float(currentTime)
+    }
     
     // MARK: - Timer
     
-    /*
+    var timer: Timer?
+    
     func startTimer() {
         timer?.invalidate()
         
@@ -55,20 +71,20 @@ class AudioRecorderController: UIViewController {
             
             self.updateViews()
             
-            if let audioRecorder = self.audioRecorder,
-                self.isRecording == true {
-                
-                audioRecorder.updateMeters()
-                self.audioVisualizer.addValue(decibelValue: audioRecorder.averagePower(forChannel: 0))
-                
-            }
-            
-            if let audioPlayer = self.audioPlayer,
-                self.isPlaying == true {
-            
-                audioPlayer.updateMeters()
-                self.audioVisualizer.addValue(decibelValue: audioPlayer.averagePower(forChannel: 0))
-            }
+//            if let audioRecorder = self.audioRecorder,
+//                self.isRecording == true {
+//
+//                audioRecorder.updateMeters()
+//                self.audioVisualizer.addValue(decibelValue: audioRecorder.averagePower(forChannel: 0))
+//
+//            }
+//
+//            if let audioPlayer = self.audioPlayer,
+//                self.isPlaying == true {
+//
+//                audioPlayer.updateMeters()
+//                self.audioVisualizer.addValue(decibelValue: audioPlayer.averagePower(forChannel: 0))
+//            }
         }
     }
     
@@ -76,15 +92,26 @@ class AudioRecorderController: UIViewController {
         timer?.invalidate()
         timer = nil
     }
-    */
+
     
     
     // MARK: - Playback
     
+    var audioPlayer: AVAudioPlayer? {
+        didSet {
+            audioPlayer?.delegate = self
+        }
+    }
+    var isPlaying: Bool {
+        audioPlayer?.isPlaying ?? false
+    }
+    
     func loadAudio() {
+        // App Bundle is read-only (downloaded from app store or installed from xcoded)
+        // Documents directory is read-write
         let songURL = Bundle.main.url(forResource: "piano", withExtension: "mp3")!
         
-        
+        audioPlayer = try? AVAudioPlayer(contentsOf: songURL)
     }
     
     /*
@@ -96,11 +123,15 @@ class AudioRecorderController: UIViewController {
     */
     
     func play() {
-        
+        audioPlayer?.play()
+        startTimer()
+        updateViews()
     }
     
     func pause() {
-        
+        audioPlayer?.pause()
+        updateViews()
+        cancelTimer()
     }
     
     
@@ -161,7 +192,11 @@ class AudioRecorderController: UIViewController {
     // MARK: - Actions
     
     @IBAction func togglePlayback(_ sender: Any) {
-        
+        if isPlaying {
+            pause()
+        } else {
+            play()
+        }
     }
     
     @IBAction func updateCurrentTime(_ sender: UISlider) {
@@ -173,3 +208,16 @@ class AudioRecorderController: UIViewController {
     }
 }
 
+extension AudioRecorderController: AVAudioPlayerDelegate {
+    
+    func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        if let error = error {
+            print("Audio player error: \(error)")
+        }
+        updateViews()
+    }
+    
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        updateViews()
+    }
+}
